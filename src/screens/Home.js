@@ -1,11 +1,16 @@
-import React, { useState, useRef } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ImageBackground } from "react-native";
+import React, { useState, useEffect, useRef } from "react";
+import { View, Text, StyleSheet, TouchableOpacity, ImageBackground, ScrollView, Image } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";  // Para iconos
 import FontAwesome from "react-native-vector-icons/FontAwesome";  // Para el icono de usuario
 import { Menu, MenuItem, MenuDivider } from 'react-native-material-menu';  // Para el menú desplegable
+import { collection, query, where, onSnapshot } from "firebase/firestore"; // Para interactuar con Firestore en tiempo real
+import { getAuth } from "firebase/auth";
+import { db } from "../../credentials";  // Firestore ya configurado
 
 export default function Home({ navigation }) {
   const [visible, setVisible] = useState(false);  // Estado del menú
+  const [torneos, setTorneos] = useState([]);
+  const [loading, setLoading] = useState(true);
   const menuRef = useRef(null);  // Referencia al menú
 
   const showMenu = () => setVisible(true);  // Mostrar el menú
@@ -15,6 +20,32 @@ export default function Home({ navigation }) {
     hideMenu();
     alert(`Seleccionaste la opción: ${option}`);
   };
+
+  // Función para obtener los torneos del usuario actual desde Firestore y escuchar en tiempo real
+  useEffect(() => {
+    const auth = getAuth();
+    const user = auth.currentUser;
+
+    if (user) {
+      const q = query(collection(db, "torneos"), where("userUID", "==", user.uid));
+
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const torneosList = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setTorneos(torneosList);
+        setLoading(false);
+      });
+
+      // Limpia la suscripción cuando el componente se desmonte
+      return () => unsubscribe();
+    }
+  }, []);
+
+  if (loading) {
+    return <Text>Cargando torneos...</Text>;
+  }
 
   return (
     <View style={{ flex: 1 }}>
@@ -31,9 +62,9 @@ export default function Home({ navigation }) {
           }
           onRequestClose={hideMenu}
         >
-          <MenuItem onPress={() => handleMenuOption('Opción 1')}>Opcion 1</MenuItem>
-          <MenuItem onPress={() => handleMenuOption('Opción 2')}>Opcion 2</MenuItem>
-          <MenuItem onPress={() => handleMenuOption('Opción 3')}>Opcion 3</MenuItem>
+          <MenuItem onPress={() => handleMenuOption('Opción 1')}>Opción 1</MenuItem>
+          <MenuItem onPress={() => handleMenuOption('Opción 2')}>Opción 2</MenuItem>
+          <MenuItem onPress={() => handleMenuOption('Opción 3')}>Opción 3</MenuItem>
           <MenuDivider />
         </Menu>
 
@@ -51,16 +82,36 @@ export default function Home({ navigation }) {
         source={require('../assets/champ.jpg')} 
         style={styles.imageBackground}
       >
-        {/* Contenido en el cuerpo */}
-        <View style={styles.container}>
-          <Text style={styles.text}>Aun no hay torneos</Text>
+        <ScrollView contentContainerStyle={styles.scrollContainer}>
+          <View style={styles.container}>
+            {/* Mostrar torneos en formato de cuadrícula */}
+            {torneos.length === 0 ? (
+              <Text style={styles.noTorneosText}>Aun no hay torneos</Text>
+            ) : (
+              <View style={styles.grid}>
+                {torneos.map((torneo) => (
+                  <TouchableOpacity
+                    key={torneo.id}
+                    style={styles.torneoIcon}
+                    onPress={() => navigation.navigate("TorneoConfig", { torneoId: torneo.id })}
+                  >
+                    <Image
+                      source={require("../assets/logo.jpg")} // Puedes cambiar la imagen por una imagen representativa
+                      style={styles.torneoImage}
+                    />
+                    <Text style={styles.torneoText}>{torneo.nombre}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
 
-          {/* Botón para agregar nuevo torneo */}
-          <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('NuevoTorneo')}>
-            <Ionicons name="add-circle-outline" size={24} color="#fff" />
-            <Text style={styles.buttonText}>Agregar nuevo torneo</Text>
-          </TouchableOpacity>
-        </View>
+            {/* Botón para agregar nuevo torneo */}
+            <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('NuevoTorneo')}>
+              <Ionicons name="add-circle-outline" size={24} color="#fff" />
+              <Text style={styles.buttonText}>Agregar nuevo torneo</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
       </ImageBackground>
     </View>
   );
@@ -80,18 +131,41 @@ const styles = StyleSheet.create({
     resizeMode: "cover",  // La imagen cubrirá toda el área disponible
     justifyContent: "center",
   },
-  container: {
-    flex: 1,
+  scrollContainer: {
+    flexGrow: 1,
     justifyContent: "center",
-    alignItems: "center",
+    paddingBottom: 20,
   },
-  text: {
-    fontSize: 20,
-    color: "#fff",  // Cambié el color del texto para que sea visible sobre la imagen
+  container: {
+    padding: 20,
+  },
+  noTorneosText: {
+    textAlign: "center",
+    fontSize: 18,
+    color: "#fff",
+  },
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+  },
+  torneoIcon: {
+    width: "45%",
+    height: 150,
+    marginBottom: 20,
+    backgroundColor: "#fff",
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  torneoImage: {
+    width: 80,
+    height: 80,
+    marginBottom: 10,
+  },
+  torneoText: {
+    fontSize: 16,
     fontWeight: "bold",
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',  // Agrega sombra al texto para mejor visibilidad
-    textShadowOffset: { width: -1, height: 1 },
-    textShadowRadius: 10,
   },
   button: {
     flexDirection: "row",
@@ -101,6 +175,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderRadius: 25,
     marginTop: 20,
+    justifyContent: "center",
   },
   buttonText: {
     color: "#fff",

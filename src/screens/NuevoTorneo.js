@@ -1,8 +1,10 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, ImageBackground, Modal, Platform, ScrollView } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, Modal, Platform, ScrollView, Alert } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";  // Para el icono de la flecha
 import DateTimePicker from '@react-native-community/datetimepicker';  // DateTimePicker para seleccionar la fecha
-
+import { collection, addDoc } from 'firebase/firestore';  // Firestore
+import { getAuth } from 'firebase/auth';  // Para obtener el usuario autenticado
+import { db } from '../../credentials';  // Archivo donde está configurada tu Firestore
 
 export default function NuevoTorneo({ navigation }) {
   const [selectedOption, setSelectedOption] = useState(null);  // Para manejar la opción seleccionada
@@ -13,6 +15,42 @@ export default function NuevoTorneo({ navigation }) {
   const [showDurationModal, setShowDurationModal] = useState(false);  // Controla la visibilidad del modal de duración
   const [selectedDetail, setSelectedDetail] = useState('');  // Almacena la cantidad de equipos seleccionada
   const [selectedDuration, setSelectedDuration] = useState('');  // Almacena la duración seleccionada
+  const [nombreTorneo, setNombreTorneo] = useState('');  // Almacena el nombre del torneo
+
+  // Función para guardar el torneo en Firestore
+  const guardarTorneo = async () => {
+    const auth = getAuth();
+    const user = auth.currentUser;  // Obtener el usuario autenticado
+
+    if (!user) {
+      Alert.alert('Error', 'Debes estar autenticado para crear un torneo.');
+      return;
+    }
+
+    if (nombreTorneo && formatoTorneo && selectedDetail && selectedDuration && selectedOption) {
+      try {
+        const torneoData = {
+          nombre: nombreTorneo,
+          formato: formatoTorneo,
+          fechaInicio: startDate,
+          cantidadEquipos: selectedDetail,
+          duracionPartidos: selectedDuration,
+          tipoTorneo: selectedOption === "campo" ? "Fútbol de campo" : "Fútbol de salón",  // Agregar si es de campo o salón
+          userUID: user.uid,  // Asociar el torneo al UID del usuario
+        };
+
+        // Guardar en la colección 'torneos'
+        await addDoc(collection(db, 'torneos'), torneoData);
+        Alert.alert('Torneo guardado exitosamente');
+        navigation.navigate('Home');  // Redirigir al Home después de guardar
+      } catch (error) {
+        console.error('Error guardando el torneo: ', error);
+        Alert.alert('Error', 'Hubo un problema al guardar el torneo.');
+      }
+    } else {
+      Alert.alert('Error', 'Por favor completa todos los campos');
+    }
+  };
 
   // Función para mostrar el DatePicker
   const showDateSelector = () => {
@@ -59,252 +97,277 @@ export default function NuevoTorneo({ navigation }) {
         <View style={{ width: 30 }} />
       </View>
 
-      {/* Imagen de fondo */}
-      <ImageBackground
-        source={require('../assets/campo.jpg')}  // Imagen predeterminada de fondo
-        style={styles.imageBackground}
+      {/* ScrollView para permitir desplazamiento */}
+      <ScrollView contentContainerStyle={styles.scrollContainer}>
+        <View style={styles.container}>
+          {/* Botón para seleccionar Fútbol de campo */}
+          <TouchableOpacity
+            style={[
+              styles.optionButton,
+              selectedOption === "campo" && styles.selectedOption,  // Estilo para la opción seleccionada
+            ]}
+            onPress={() => setSelectedOption("campo")}
+          >
+            <Text style={styles.optionText}>Fútbol de campo</Text>
+          </TouchableOpacity>
+
+          {/* Mostrar formulario si se selecciona Fútbol de campo */}
+          {selectedOption === "campo" && (
+            <View style={styles.form}>
+              <Text style={styles.label}>Nombre del Torneo</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Nombre del torneo"
+                placeholderTextColor="#999"
+                value={nombreTorneo}
+                onChangeText={setNombreTorneo}  // Actualiza el estado del nombre del torneo
+              />
+
+              {/* Opción para seleccionar el formato del torneo */}
+              <Text style={styles.label}>Formato del torneo</Text>
+              <View style={styles.radioContainer}>
+                <TouchableOpacity
+                  style={styles.radioOption}
+                  onPress={() => selectFormatoTorneo("fase_grupos")}
+                >
+                  <Ionicons
+                    name={formatoTorneo === "fase_grupos" ? "radio-button-on" : "radio-button-off"}
+                    size={24}
+                    color="#32CD32"
+                  />
+                  <Text style={styles.radioText}>Fase de grupos</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.radioOption}
+                  onPress={() => selectFormatoTorneo("eliminacion_directa")}
+                >
+                  <Ionicons
+                    name={formatoTorneo === "eliminacion_directa" ? "radio-button-on" : "radio-button-off"}
+                    size={24}
+                    color="#32CD32"
+                  />
+                  <Text style={styles.radioText}>Eliminación directa</Text>
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.label}>Seleccione la fecha de inicio del torneo</Text>
+              {/* Campo de selección de fecha */}
+              <TouchableOpacity onPress={showDateSelector} style={styles.dateButton}>
+                <Text style={styles.dateText}>Fecha de inicio: {startDate.toLocaleDateString()}</Text>
+              </TouchableOpacity>
+
+              {/* Mostrar DatePicker si se selecciona */}
+              {showDatePicker && (
+                <DateTimePicker
+                  value={startDate}
+                  mode="date"
+                  display="default"
+                  onChange={onChange}
+                />
+              )}
+
+              {/* Opción para seleccionar la cantidad de equipos */}
+              <Text style={styles.label}>Cantidad de equipos</Text>
+              <TouchableOpacity style={styles.dateButton} onPress={() => setShowModal(true)}>
+                <Text style={styles.dateText}>Seleccionar cantidad de equipos</Text>
+              </TouchableOpacity>
+
+              {/* Mostrar la cantidad de equipos seleccionada */}
+              {selectedDetail ? (
+                <Text style={styles.selectedDetailText}>
+                  Cantidad de equipos: {selectedDetail}
+                </Text>
+              ) : null}
+
+              {/* Opción para seleccionar la duración de los partidos */}
+              <Text style={styles.label}>Duración de partidos</Text>
+              <TouchableOpacity style={styles.dateButton} onPress={() => setShowDurationModal(true)}>
+                <Text style={styles.dateText}>Seleccionar duración de partidos</Text>
+              </TouchableOpacity>
+
+              {/* Mostrar la duración seleccionada */}
+              {selectedDuration ? (
+                <Text style={styles.selectedDetailText}>
+                  Duración seleccionada: {selectedDuration}
+                </Text>
+              ) : null}
+            </View>
+          )}
+
+          {/* Botón para seleccionar Fútbol de salón */}
+          <TouchableOpacity
+            style={[
+              styles.optionButton,
+              selectedOption === "salon" && styles.selectedOption,  // Estilo para la opción seleccionada
+            ]}
+            onPress={() => setSelectedOption("salon")}
+          >
+            <Text style={styles.optionText}>Fútbol de salón</Text>
+          </TouchableOpacity>
+
+          {/* Mostrar formulario si se selecciona Fútbol de salón */}
+          {selectedOption === "salon" && (
+            <View style={styles.form}>
+              <Text style={styles.label}>Nombre del Torneo</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Nombre del torneo"
+                placeholderTextColor="#999"
+                value={nombreTorneo}
+                onChangeText={setNombreTorneo}
+              />
+
+              {/* Opción para seleccionar el formato del torneo */}
+              <Text style={styles.label}>Formato del torneo</Text>
+              <View style={styles.radioContainer}>
+                <TouchableOpacity
+                  style={styles.radioOption}
+                  onPress={() => selectFormatoTorneo("fase_grupos")}
+                >
+                  <Ionicons
+                    name={formatoTorneo === "fase_grupos" ? "radio-button-on" : "radio-button-off"}
+                    size={24}
+                    color="#32CD32"
+                  />
+                  <Text style={styles.radioText}>Fase de grupos</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.radioOption}
+                  onPress={() => selectFormatoTorneo("eliminacion_directa")}
+                >
+                  <Ionicons
+                    name={formatoTorneo === "eliminacion_directa" ? "radio-button-on" : "radio-button-off"}
+                    size={24}
+                    color="#32CD32"
+                  />
+                  <Text style={styles.radioText}>Eliminación directa</Text>
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.label}>Seleccione la fecha de inicio del torneo</Text>
+              {/* Campo de selección de fecha */}
+              <TouchableOpacity onPress={showDateSelector} style={styles.dateButton}>
+                <Text style={styles.dateText}>Fecha de inicio: {startDate.toLocaleDateString()}</Text>
+              </TouchableOpacity>
+
+              {/* Mostrar DatePicker si se selecciona */}
+              {showDatePicker && (
+                <DateTimePicker
+                  value={startDate}
+                  mode="date"
+                  display="default"
+                  onChange={onChange}
+                />
+              )}
+
+              {/* Opción para seleccionar la cantidad de equipos */}
+              <Text style={styles.label}>Cantidad de equipos</Text>
+              <TouchableOpacity style={styles.dateButton} onPress={() => setShowModal(true)}>
+                <Text style={styles.dateText}>Seleccionar cantidad de equipos</Text>
+              </TouchableOpacity>
+
+              {/* Mostrar la cantidad de equipos seleccionada */}
+              {selectedDetail ? (
+                <Text style={styles.selectedDetailText}>
+                  Cantidad de equipos: {selectedDetail}
+                </Text>
+              ) : null}
+
+              {/* Opción para seleccionar la duración de los partidos */}
+              <Text style={styles.label}>Duración de partidos</Text>
+              <TouchableOpacity style={styles.dateButton} onPress={() => setShowDurationModal(true)}>
+                <Text style={styles.dateText}>Seleccionar duración de partidos</Text>
+              </TouchableOpacity>
+
+              {/* Mostrar la duración seleccionada */}
+              {selectedDuration ? (
+                <Text style={styles.selectedDetailText}>
+                  Duración seleccionada: {selectedDuration}
+                </Text>
+              ) : null}
+            </View>
+          )}
+
+          {/* Botón debajo del contenido, visible solo cuando hay una opción seleccionada */}
+          {selectedOption && (
+            <TouchableOpacity style={styles.bottomButton} onPress={guardarTorneo}>
+              <Text style={styles.buttonText}>Guardar Torneo</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </ScrollView>
+
+      {/* Modal para seleccionar la cantidad de equipos */}
+      <Modal
+        transparent={true}
+        visible={showModal}
+        animationType="slide"
+        onRequestClose={() => setShowModal(false)}
       >
-        {/* ScrollView para permitir desplazamiento */}
-        <ScrollView contentContainerStyle={styles.scrollContainer}>
-          <View style={styles.container}>
-            {/*<Text style={styles.text}>Selecciona una opción</Text>*/}
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Cantidad de equipos</Text>
 
-            {/* Botón para seleccionar Fútbol de campo */}
-            <TouchableOpacity
-              style={[
-                styles.optionButton,
-                selectedOption === "campo" && styles.selectedOption,  // Estilo para la opción seleccionada
-              ]}
-              onPress={() => setSelectedOption("campo")}
-            >
-              <Text style={styles.optionText}>Fútbol de campo</Text>
+            <TouchableOpacity onPress={() => selectDetail(8)}>
+              <Text style={styles.modalOption}>8 equipos</Text>
             </TouchableOpacity>
 
-            {/* Mostrar formulario si se selecciona Fútbol de campo */}
-            {selectedOption === "campo" && (
-              <View style={styles.form}>
-                <Text style={styles.label}>Nombre del Torneo</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Nombre del torneo"
-                  placeholderTextColor="#999"
-                />
-
-                {/* Opción para seleccionar el formato del torneo */}
-                <Text style={styles.label}>Formato del torneo</Text>
-                <View style={styles.radioContainer}>
-                  <TouchableOpacity
-                    style={styles.radioOption}
-                    onPress={() => selectFormatoTorneo("fase_grupos")}
-                  >
-                    <Ionicons
-                      name={formatoTorneo === "fase_grupos" ? "radio-button-on" : "radio-button-off"}
-                      size={24}
-                      color="#32CD32"
-                    />
-                    <Text style={styles.radioText}>Fase de grupos</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.radioOption}
-                    onPress={() => selectFormatoTorneo("eliminacion_directa")}
-                  >
-                    <Ionicons
-                      name={formatoTorneo === "eliminacion_directa" ? "radio-button-on" : "radio-button-off"}
-                      size={24}
-                      color="#32CD32"
-                    />
-                    <Text style={styles.radioText}>Eliminación directa</Text>
-                  </TouchableOpacity>
-                </View>
-
-                <Text style={styles.label}>Seleccione la fecha de inicio del torneo</Text>
-                {/* Campo de selección de fecha */}
-                <TouchableOpacity onPress={showDateSelector} style={styles.dateButton}>
-                  <Text style={styles.dateText}>Fecha de inicio: {startDate.toLocaleDateString()}</Text>
-                </TouchableOpacity>
-
-                {/* Mostrar DatePicker si se selecciona */}
-                {showDatePicker && (
-                  <DateTimePicker
-                    value={startDate}
-                    mode="date"
-                    display="default"
-                    onChange={onChange}
-                  />
-                )}
-
-                {/* Opción para seleccionar la cantidad de equipos */}
-                <Text style={styles.label}>Cantidad de equipos</Text>
-                <TouchableOpacity style={styles.dateButton} onPress={() => setShowModal(true)}>
-                  <Text style={styles.dateText}>Seleccionar cantidad de equipos</Text>
-                </TouchableOpacity>
-
-                {/* Mostrar la cantidad de equipos seleccionada */}
-                {selectedDetail ? (
-                  <Text style={styles.selectedDetailText}>
-                    Cantidad de equipos: {selectedDetail}
-                  </Text>
-                ) : null}
-
-                {/* Opción para seleccionar la duración de los partidos */}
-                <Text style={styles.label}>Duración de partidos</Text>
-                <TouchableOpacity style={styles.dateButton} onPress={() => setShowDurationModal(true)}>
-                  <Text style={styles.dateText}>Seleccionar duración de partidos</Text>
-                </TouchableOpacity>
-
-                {/* Mostrar la duración seleccionada */}
-                {selectedDuration ? (
-                  <Text style={styles.selectedDetailText}>
-                    Duración seleccionada: {selectedDuration}
-                  </Text>
-                ) : null}
-              </View>
-            )}
-
-            {/* Botón para seleccionar Fútbol de salón */}
-            <TouchableOpacity
-              style={[
-                styles.optionButton,
-                selectedOption === "salon" && styles.selectedOption,  // Estilo para la opción seleccionada
-              ]}
-              onPress={() => setSelectedOption("salon")}
-            >
-              <Text style={styles.optionText}>Fútbol de salón</Text>
+            <TouchableOpacity onPress={() => selectDetail(16)}>
+              <Text style={styles.modalOption}>16 equipos</Text>
             </TouchableOpacity>
 
-            {/* Mostrar formulario si se selecciona Fútbol de salón */}
-            {selectedOption === "salon" && (
-              <View style={styles.form}>
-                <Text style={styles.label}>Nombre del Torneo</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Nombre del torneo"
-                  placeholderTextColor="#999"
-                />
-                <Text style={styles.label}>Seleccione la fecha de inicio del torneo</Text>
-                {/* Campo de selección de fecha */}
-                <TouchableOpacity onPress={showDateSelector} style={styles.dateButton}>
-                  <Text style={styles.dateText}>Fecha de inicio: {startDate.toLocaleDateString()}</Text>
-                </TouchableOpacity>
+            <TouchableOpacity onPress={() => selectDetail(32)}>
+              <Text style={styles.modalOption}>32 equipos</Text>
+            </TouchableOpacity>
 
-                {/* Mostrar DatePicker si se selecciona */}
-                {showDatePicker && (
-                  <DateTimePicker
-                    value={startDate}
-                    mode="date"
-                    display="default"
-                    onChange={onChange}
-                  />
-                )}
-
-                {/* Opción para seleccionar la cantidad de equipos */}
-                <Text style={styles.label}>Cantidad de equipos</Text>
-                <TouchableOpacity style={styles.dateButton} onPress={() => setShowModal(true)}>
-                  <Text style={styles.dateText}>Seleccionar cantidad de equipos</Text>
-                </TouchableOpacity>
-
-                {/* Mostrar la cantidad de equipos seleccionada */}
-                {selectedDetail ? (
-                  <Text style={styles.selectedDetailText}>
-                    Cantidad de equipos: {selectedDetail}
-                  </Text>
-                ) : null}
-
-                {/* Opción para seleccionar la duración de los partidos */}
-                <Text style={styles.label}>Duración de partidos</Text>
-                <TouchableOpacity style={styles.dateButton} onPress={() => setShowDurationModal(true)}>
-                  <Text style={styles.dateText}>Seleccionar duración de partidos</Text>
-                </TouchableOpacity>
-
-                {/* Mostrar la duración seleccionada */}
-                {selectedDuration ? (
-                  <Text style={styles.selectedDetailText}>
-                    Duración seleccionada: {selectedDuration}
-                  </Text>
-                ) : null}
-              </View>
-            )}
-
-            {/* Botón debajo del contenido, visible solo cuando hay una opción seleccionada */}
-            {selectedOption && (
-              <TouchableOpacity style={styles.bottomButton}>
-                <Text style={styles.buttonText}>Guardar Torneo</Text>
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity
+              style={styles.modalCloseButton}
+              onPress={() => setShowModal(false)}
+            >
+              <Text style={styles.modalCloseText}>Cerrar</Text>
+            </TouchableOpacity>
           </View>
-        </ScrollView>
+        </View>
+      </Modal>
 
-        {/* Modal para seleccionar la cantidad de equipos */}
-        <Modal
-          transparent={true}
-          visible={showModal}
-          animationType="slide"
-          onRequestClose={() => setShowModal(false)}
-        >
-          <View style={styles.modalContainer}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Cantidad de equipos</Text>
+      {/* Modal para seleccionar la duración de partidos */}
+      <Modal
+        transparent={true}
+        visible={showDurationModal}
+        animationType="slide"
+        onRequestClose={() => setShowDurationModal(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Duración del partido</Text>
 
-              <TouchableOpacity onPress={() => selectDetail(8)}>
-                <Text style={styles.modalOption}>8 equipos</Text>
-              </TouchableOpacity>
+            <TouchableOpacity onPress={() => selectDuration(20)}>
+              <Text style={styles.modalOption}>20 minutos</Text>
+            </TouchableOpacity>
 
-              <TouchableOpacity onPress={() => selectDetail(16)}>
-                <Text style={styles.modalOption}>16 equipos</Text>
-              </TouchableOpacity>
+            <TouchableOpacity onPress={() => selectDuration(30)}>
+              <Text style={styles.modalOption}>30 minutos</Text>
+            </TouchableOpacity>
 
-              <TouchableOpacity onPress={() => selectDetail(32)}>
-                <Text style={styles.modalOption}>32 equipos</Text>
-              </TouchableOpacity>
+            <TouchableOpacity onPress={() => selectDuration(45)}>
+              <Text style={styles.modalOption}>45 minutos</Text>
+            </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.modalCloseButton}
-                onPress={() => setShowModal(false)}
-              >
-                <Text style={styles.modalCloseText}>Cerrar</Text>
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity onPress={() => selectDuration(60)}>
+              <Text style={styles.modalOption}>60 minutos</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.modalCloseButton}
+              onPress={() => setShowDurationModal(false)}
+            >
+              <Text style={styles.modalCloseText}>Cerrar</Text>
+            </TouchableOpacity>
           </View>
-        </Modal>
-
-        {/* Modal para seleccionar la duración de partidos */}
-        <Modal
-          transparent={true}
-          visible={showDurationModal}
-          animationType="slide"
-          onRequestClose={() => setShowDurationModal(false)}
-        >
-          <View style={styles.modalContainer}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Duración del partido</Text>
-
-              <TouchableOpacity onPress={() => selectDuration(20)}>
-                <Text style={styles.modalOption}>20 minutos</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity onPress={() => selectDuration(30)}>
-                <Text style={styles.modalOption}>30 minutos</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity onPress={() => selectDuration(45)}>
-                <Text style={styles.modalOption}>45 minutos</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity onPress={() => selectDuration(60)}>
-                <Text style={styles.modalOption}>60 minutos</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.modalCloseButton}
-                onPress={() => setShowDurationModal(false)}
-              >
-                <Text style={styles.modalCloseText}>Cerrar</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
-      </ImageBackground>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -325,11 +388,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     flex: 1,
   },
-  imageBackground: {
-    flex: 1,
-    resizeMode: "cover",  // La imagen cubrirá toda el área disponible
-    justifyContent: "center",
-  },
   scrollContainer: {
     flexGrow: 1,
     justifyContent: "center",
@@ -338,12 +396,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-  },
-  text: {
-    fontSize: 20,
-    color: "#000",
-    marginBottom: 20,
-    textAlign: "center",
   },
   optionButton: {
     padding: 15,
