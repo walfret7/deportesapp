@@ -1,24 +1,30 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, ImageBackground, ScrollView, Image } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";  // Para iconos
 import FontAwesome from "react-native-vector-icons/FontAwesome";  // Para el icono de usuario
-import { Menu, MenuItem, MenuDivider } from 'react-native-material-menu';  // Para el menú desplegable
+import { Menu, MenuItem } from 'react-native-material-menu';  // Para el menú desplegable
 import { collection, query, where, onSnapshot } from "firebase/firestore"; // Para interactuar con Firestore en tiempo real
 import { getAuth } from "firebase/auth";
 import { db } from "../../credentials";  // Firestore ya configurado
 
 export default function Home({ navigation }) {
-  const [visible, setVisible] = useState(false);  // Estado del menú
+  const [visibleMenus, setVisibleMenus] = useState({});  // Estado para gestionar la visibilidad de menús
   const [torneos, setTorneos] = useState([]);
   const [loading, setLoading] = useState(true);
-  const menuRef = useRef(null);  // Referencia al menú
 
-  const showMenu = () => setVisible(true);  // Mostrar el menú
-  const hideMenu = () => setVisible(false);  // Ocultar el menú
+  // Mostrar menú específico basado en ID
+  const showMenu = (id) => {
+    setVisibleMenus((prevState) => ({ ...prevState, [id]: true }));
+  };
 
-  const handleMenuOption = (option) => {
-    hideMenu();
-    alert(`Seleccionaste la opción: ${option}`);
+  // Ocultar menú específico basado en ID
+  const hideMenu = (id) => {
+    setVisibleMenus((prevState) => ({ ...prevState, [id]: false }));
+  };
+
+  const handleAgregarEquipos = (torneoId) => {
+    hideMenu(torneoId);
+    navigation.navigate("EquiposAgg", { torneoId });
   };
 
   // Función para obtener los torneos del usuario actual desde Firestore y escuchar en tiempo real
@@ -51,27 +57,12 @@ export default function Home({ navigation }) {
     <View style={{ flex: 1 }}>
       {/* Barra superior */}
       <View style={styles.header}>
-        {/* Icono de tres líneas para abrir el menú */}
-        <Menu
-          ref={menuRef}
-          visible={visible}
-          anchor={
-            <TouchableOpacity onPress={showMenu}>
-              <Ionicons name="menu" size={30} color="#fff" />
-            </TouchableOpacity>
-          }
-          onRequestClose={hideMenu}
-        >
-          <MenuItem onPress={() => handleMenuOption('Opción 1')}>Opción 1</MenuItem>
-          <MenuItem onPress={() => handleMenuOption('Opción 2')}>Opción 2</MenuItem>
-          <MenuItem onPress={() => handleMenuOption('Opción 3')}>Opción 3</MenuItem>
-          <MenuDivider />
-        </Menu>
+        <TouchableOpacity onPress={() => setVisibleMenus((prevState) => ({ ...prevState, main: !prevState.main }))}>
+          <Ionicons name="menu" size={30} color="#fff" />
+        </TouchableOpacity>
 
-        {/* Icono de usuario en el centro */}
         <FontAwesome name="user" size={30} color="#fff" />
 
-        {/* Icono de salir a la derecha */}
         <TouchableOpacity onPress={() => navigation.navigate("Login")}>
           <Ionicons name="exit-outline" size={30} color="#fff" />
         </TouchableOpacity>
@@ -90,17 +81,16 @@ export default function Home({ navigation }) {
             ) : (
               <View style={styles.grid}>
                 {torneos.map((torneo) => (
-                  <TouchableOpacity
-                    key={torneo.id}
-                    style={styles.torneoIcon}
-                    onPress={() => navigation.navigate("TorneoConfig", { torneoId: torneo.id })}
-                  >
-                    <Image
-                      source={require("../assets/logo.jpg")} // Puedes cambiar la imagen por una imagen representativa
-                      style={styles.torneoImage}
-                    />
-                    <Text style={styles.torneoText}>{torneo.nombre}</Text>
-                  </TouchableOpacity>
+                  <View key={torneo.id} style={styles.torneoIcon}>
+                    {/* Contenido principal del torneo */}
+                    <TouchableOpacity onPress={() => navigation.navigate("TorneoConfig", { torneoId: torneo.id })}>
+                      <Image
+                        source={require("../assets/logo.jpg")}  // Cambia la imagen si lo deseas
+                        style={styles.torneoImage}
+                      />
+                      <Text style={styles.torneoText}>{torneo.nombre}</Text>
+                    </TouchableOpacity>
+                  </View>
                 ))}
               </View>
             )}
@@ -157,6 +147,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
+    position: "relative",
   },
   torneoImage: {
     width: 80,
@@ -181,5 +172,11 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     marginLeft: 10,
+  },
+  menuButton: {
+    position: "absolute",
+    top: 5,
+    right: 5,
+    zIndex: 1,  // Asegura que esté encima del contenido del torneo
   },
 });

@@ -31,7 +31,7 @@ export default function NuevoTorneo({ navigation }) {
       try {
         const torneoData = {
           nombre: nombreTorneo,
-          formato: formatoTorneo,
+          tipoformato: formatoTorneo,
           fechaInicio: startDate,
           cantidadEquipos: selectedDetail,
           duracionPartidos: selectedDuration,
@@ -128,10 +128,10 @@ export default function NuevoTorneo({ navigation }) {
               <View style={styles.radioContainer}>
                 <TouchableOpacity
                   style={styles.radioOption}
-                  onPress={() => selectFormatoTorneo("fase_grupos")}
+                  onPress={() => selectFormatoTorneo("Fase de grupos")}
                 >
                   <Ionicons
-                    name={formatoTorneo === "fase_grupos" ? "radio-button-on" : "radio-button-off"}
+                    name={formatoTorneo === "Fase de grupos" ? "radio-button-on" : "radio-button-off"}
                     size={24}
                     color="#32CD32"
                   />
@@ -140,10 +140,10 @@ export default function NuevoTorneo({ navigation }) {
 
                 <TouchableOpacity
                   style={styles.radioOption}
-                  onPress={() => selectFormatoTorneo("eliminacion_directa")}
+                  onPress={() => selectFormatoTorneo("Eliminacion directa")}
                 >
                   <Ionicons
-                    name={formatoTorneo === "eliminacion_directa" ? "radio-button-on" : "radio-button-off"}
+                    name={formatoTorneo === "Eliminacion directa" ? "radio-button-on" : "radio-button-off"}
                     size={24}
                     color="#32CD32"
                   />
@@ -223,10 +223,10 @@ export default function NuevoTorneo({ navigation }) {
               <View style={styles.radioContainer}>
                 <TouchableOpacity
                   style={styles.radioOption}
-                  onPress={() => selectFormatoTorneo("fase_grupos")}
+                  onPress={() => selectFormatoTorneo("Fase de grupos")}
                 >
                   <Ionicons
-                    name={formatoTorneo === "fase_grupos" ? "radio-button-on" : "radio-button-off"}
+                    name={formatoTorneo === "Fase de grupos" ? "radio-button-on" : "radio-button-off"}
                     size={24}
                     color="#32CD32"
                   />
@@ -235,10 +235,10 @@ export default function NuevoTorneo({ navigation }) {
 
                 <TouchableOpacity
                   style={styles.radioOption}
-                  onPress={() => selectFormatoTorneo("eliminacion_directa")}
+                  onPress={() => selectFormatoTorneo("Eliminacion directa")}
                 >
                   <Ionicons
-                    name={formatoTorneo === "eliminacion_directa" ? "radio-button-on" : "radio-button-off"}
+                    name={formatoTorneo === "Eliminacion directa" ? "radio-button-on" : "radio-button-off"}
                     size={24}
                     color="#32CD32"
                   />

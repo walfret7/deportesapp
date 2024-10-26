@@ -1,17 +1,23 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Alert, Modal, TextInput } from "react-native";
-import { doc, getDoc, deleteDoc, updateDoc } from "firebase/firestore";  // Importar métodos para actualizar Firestore
-import { db } from "../../credentials";  // Firestore ya configurado
+import { View, Text, StyleSheet, TouchableOpacity, Modal, TextInput, ScrollView, Alert } from "react-native";
+import { doc, getDoc, deleteDoc, updateDoc, addDoc, collection, query, where, onSnapshot } from "firebase/firestore";
+import { db } from "../../credentials";
 import Ionicons from "react-native-vector-icons/Ionicons";
-import { RadioButton } from 'react-native-paper';  // Importamos RadioButton de react-native-paper
+import { RadioButton } from 'react-native-paper';
+
 
 export default function TorneoConfig({ route, navigation }) {
-  const { torneoId } = route.params;  // Recibimos el ID del torneo seleccionado
+  const { torneoId } = route.params;
   const [torneo, setTorneo] = useState(null);
-  const [isModalVisible, setIsModalVisible] = useState(false);  // Control del modal de edición
-  const [editedTorneo, setEditedTorneo] = useState({});  // Estado para los cambios de edición
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [editedTorneo, setEditedTorneo] = useState({});
+  const [mostrarAgregarEquipos, setMostrarAgregarEquipos] = useState(false);
+  const [nombreEquipo, setNombreEquipo] = useState(''); // Estado para el nombre del equipo
+  const [equipos, setEquipos] = useState([]); // Estado para la lista de equipos
+  const [equipoEditado, setEquipoEditado] = useState(null); // Estado para manejar el equipo en edición
+  const [isEditModalVisible, setIsEditModalVisible] = useState(false); // Controlar la visibilidad del modal de edición
 
-  // Función para obtener la información del torneo
+  // Función para obtener los datos del torneo
   const fetchTorneo = async () => {
     const docRef = doc(db, "torneos", torneoId);
     const docSnap = await getDoc(docRef);
@@ -19,30 +25,113 @@ export default function TorneoConfig({ route, navigation }) {
     if (docSnap.exists()) {
       const torneoData = docSnap.data();
       setTorneo(torneoData);
-      setEditedTorneo(torneoData);  // Inicializar con los datos actuales
+      setEditedTorneo(torneoData);
     } else {
       Alert.alert("Error", "No se encontró el torneo.");
     }
   };
 
+  // Obtener los equipos del torneo desde Firebase
+  const fetchEquipos = () => {
+    const q = query(collection(db, "equipos"), where("torneoId", "==", torneoId));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const equiposList = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setEquipos(equiposList);
+    });
+
+    return () => unsubscribe();
+  };
+
   useEffect(() => {
     fetchTorneo();
+    fetchEquipos();
   }, []);
 
-  // Función para guardar los cambios en Firestore
+  // Función para agregar un equipo
+  const agregarEquipo = async () => {
+    if (equipos.length >= torneo.cantidadEquipos) {
+      Alert.alert("Advertencia", `El límite de equipos (${torneo.cantidadEquipos}) ha sido alcanzado.`);
+      return; // Si se alcanza el límite, no agrega el equipo
+    }
+
+    if (nombreEquipo.trim() === "") {
+      Alert.alert("Error", "El nombre del equipo no puede estar vacío.");
+      return;
+    }
+
+    try {
+      await addDoc(collection(db, "equipos"), {
+        nombre: nombreEquipo,
+        torneoId: torneoId, // Relaciona el equipo con el torneo actual
+      });
+      setNombreEquipo(''); // Limpiar el input después de agregar el equipo
+    } catch (error) {
+      console.error("Error agregando equipo: ", error);
+      Alert.alert("Error", "Hubo un problema al agregar el equipo.");
+    }
+  };
+
+  // Función para editar un equipo
+  const editarEquipo = (equipo) => {
+    setEquipoEditado(equipo); // Establecer el equipo seleccionado para editar
+    setIsEditModalVisible(true); // Mostrar el modal de edición
+  };
+
+  const guardarEdicionEquipo = async () => {
+    if (!equipoEditado.nombre.trim()) {
+      Alert.alert("Error", "El nombre del equipo no puede estar vacío.");
+      return;
+    }
+
+    try {
+      const equipoRef = doc(db, "equipos", equipoEditado.id);
+      await updateDoc(equipoRef, { nombre: equipoEditado.nombre });
+      setIsEditModalVisible(false); // Cerrar el modal después de guardar
+      Alert.alert("Éxito", "Equipo actualizado correctamente.");
+    } catch (error) {
+      Alert.alert("Error", "Hubo un problema al actualizar el equipo.");
+    }
+  };
+
+  // Función para eliminar un equipo
+  const eliminarEquipo = async (equipoId) => {
+    Alert.alert(
+      "Eliminar Equipo",
+      "¿Estás seguro de que deseas eliminar este equipo?",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Eliminar",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await deleteDoc(doc(db, "equipos", equipoId));
+              Alert.alert("Equipo eliminado.");
+            } catch (error) {
+              Alert.alert("Error", "Hubo un problema al eliminar el equipo.");
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const guardarCambios = async () => {
     try {
       const docRef = doc(db, "torneos", torneoId);
-      await updateDoc(docRef, editedTorneo);  // Actualizar Firestore con los datos editados
-      setTorneo(editedTorneo);  // Actualizar los datos en la interfaz de usuario
-      setIsModalVisible(false);  // Cerrar el modal
+      await updateDoc(docRef, editedTorneo);
+      setTorneo(editedTorneo);
+      setIsModalVisible(false);
       Alert.alert("Éxito", "Torneo actualizado correctamente.");
     } catch (error) {
       Alert.alert("Error", "Hubo un problema al actualizar el torneo.");
     }
   };
 
-  // Función para eliminar el torneo
   const eliminarTorneo = async () => {
     Alert.alert(
       "Eliminar Torneo",
@@ -56,7 +145,7 @@ export default function TorneoConfig({ route, navigation }) {
             try {
               await deleteDoc(doc(db, "torneos", torneoId));
               Alert.alert("Torneo eliminado.");
-              navigation.navigate("Home");  // Redirige a Home después de eliminar
+              navigation.navigate("Home");
             } catch (error) {
               Alert.alert("Error", "Hubo un problema al eliminar el torneo.");
             }
@@ -78,42 +167,134 @@ export default function TorneoConfig({ route, navigation }) {
           <Ionicons name="arrow-back" size={30} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Configuración del Torneo</Text>
-        <View style={{ width: 30 }} /> 
+        <TouchableOpacity onPress={() => alert('Settings')}>
+          <Ionicons name="settings-outline" size={30} color="#fff" />
+        </TouchableOpacity>
       </View>
 
-      {/* Información del torneo */}
-      <View style={styles.infoContainer}>
-        <Text style={styles.label}>Nombre del Torneo:</Text>
-        <Text style={styles.value}>{torneo.nombre}</Text>
-
-        <Text style={styles.label}>Formato del Torneo:</Text>
-        <Text style={styles.value}>
-          {torneo.formato === "campo" ? "Fútbol de Campo" : "Fútbol de Salón"}
-        </Text>
-
-        <Text style={styles.label}>Fecha de Inicio:</Text>
-        <Text style={styles.value}>{new Date(torneo.fechaInicio.seconds * 1000).toLocaleDateString()}</Text>
-
-        <Text style={styles.label}>Cantidad de Equipos:</Text>
-        <Text style={styles.value}>{torneo.cantidadEquipos}</Text>
-
-        <Text style={styles.label}>Duración de Partidos:</Text>
-        <Text style={styles.value}>{torneo.duracionPartidos}</Text>
+      {/* Barra de navegación adicional */}
+      <View style={styles.navIcons}>
+        <TouchableOpacity onPress={() => setMostrarAgregarEquipos(false)}>
+          <Ionicons name="home-outline" size={30} color="#fff" />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => setMostrarAgregarEquipos(true)}>
+          <Ionicons name="football-outline" size={30} color="#fff" />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => alert('Website')}>
+          <Ionicons name="globe-outline" size={30} color="#fff" />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => alert('Chat')}>
+          <Ionicons name="chatbubble-outline" size={30} color="#fff" />
+        </TouchableOpacity>
       </View>
 
-      {/* Botón para abrir el modal de edición */}
-      <TouchableOpacity style={styles.buttonEdit} onPress={() => setIsModalVisible(true)}>
-        <Ionicons name="pencil-outline" size={20} color="#fff" />
-        <Text style={styles.buttonText}>Editar Torneo</Text>
-      </TouchableOpacity>
+      {mostrarAgregarEquipos ? (
+        <View style={styles.agregarEquiposContainer}>
+          <Text style={styles.title}>Añadir equipos</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Nombre del Equipo"
+            value={nombreEquipo}
+            onChangeText={setNombreEquipo}
+          />
+          <TouchableOpacity style={styles.addButton} onPress={agregarEquipo}>
+            <Text style={styles.addButtonText}>Añadir</Text>
+          </TouchableOpacity>
+
+          {/* Lista de equipos */}
+          <Text style={styles.totalEquiposText}>Total: {equipos.length}</Text>
+          {equipos.map((equipo) => (
+            <View key={equipo.id} style={styles.equipoItem}>
+              <Ionicons name="trophy-outline" size={30} color="#32CD32" />
+              <View>
+                <Text style={styles.equipoNombre}>{equipo.nombre}</Text>
+                <Text style={styles.equipoJugadores}>0 Jugador</Text>
+              </View>
+              <View style={styles.iconContainer}>
+                {/* Botón de editar */}
+                <TouchableOpacity onPress={() => editarEquipo(equipo)}>
+                  <Ionicons name="pencil-outline" size={24} color="#007BFF" />
+                </TouchableOpacity>
+                {/* Botón de eliminar */}
+                <TouchableOpacity onPress={() => eliminarEquipo(equipo.id)}>
+                  <Ionicons name="trash-outline" size={24} color="#FF0000" />
+                </TouchableOpacity>
+              </View>
+            </View>
+          ))}
+        </View>
+      ) : (
+        <ScrollView>
+          <View style={styles.infoContainer}>
+            <Text style={styles.label}>Nombre del Torneo:</Text>
+            <Text style={styles.value}>{torneo.nombre}</Text>
+
+            <Text style={styles.label}>Deporte:</Text>
+            <Text style={styles.value}>
+              {torneo.formato === "campo" ? "Fútbol de Campo" : "Fútbol de Salón"}
+            </Text>
+
+            <Text style={styles.label}>Formato del Torneo:</Text>
+            <Text style={styles.value}>
+              {torneo.tipoFormato === "Fase de grupos" ? "Fase de Grupos" : "Eliminación Directa"}
+            </Text>
+
+            <Text style={styles.label}>Fecha de Inicio:</Text>
+            <Text style={styles.value}>{new Date(torneo.fechaInicio.seconds * 1000).toLocaleDateString()}</Text>
+
+            <Text style={styles.label}>Cantidad de Equipos:</Text>
+            <Text style={styles.value}>{torneo.cantidadEquipos}</Text>
+
+            <Text style={styles.label}>Duración de Partidos:</Text>
+            <Text style={styles.value}>{torneo.duracionPartidos}</Text>
+          </View>
+        </ScrollView>
+      )}
+
+      {/* Modal de edición de equipo */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={isEditModalVisible}
+        onRequestClose={() => setIsEditModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Editar Equipo</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Nombre del Equipo"
+              value={equipoEditado ? equipoEditado.nombre : ''}
+              onChangeText={(text) => setEquipoEditado({ ...equipoEditado, nombre: text })}
+            />
+            <TouchableOpacity style={styles.buttonSave} onPress={guardarEdicionEquipo}>
+              <Ionicons name="save-outline" size={20} color="#fff" />
+              <Text style={styles.buttonText}>Guardar Cambios</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.buttonClose} onPress={() => setIsEditModalVisible(false)}>
+              <Text style={styles.buttonCloseText}>Cerrar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Botón para abrir el modal de edición del torneo */}
+      {!mostrarAgregarEquipos && (
+        <TouchableOpacity style={styles.buttonEdit} onPress={() => setIsModalVisible(true)}>
+          <Ionicons name="pencil-outline" size={20} color="#fff" />
+          <Text style={styles.buttonText}>Editar Torneo</Text>
+        </TouchableOpacity>
+      )}
 
       {/* Botón para eliminar el torneo */}
-      <TouchableOpacity style={styles.buttonDelete} onPress={eliminarTorneo}>
-        <Ionicons name="trash-outline" size={20} color="#fff" />
-        <Text style={styles.buttonText}>Eliminar Torneo</Text>
-      </TouchableOpacity>
+      {!mostrarAgregarEquipos && (
+        <TouchableOpacity style={styles.buttonDelete} onPress={eliminarTorneo}>
+          <Ionicons name="trash-outline" size={20} color="#fff" />
+          <Text style={styles.buttonText}>Eliminar Torneo</Text>
+        </TouchableOpacity>
+      )}
 
-      {/* Modal de edición */}
+      {/* Modal de edición del torneo */}
       <Modal
         animationType="slide"
         transparent={true}
@@ -125,7 +306,6 @@ export default function TorneoConfig({ route, navigation }) {
             <Text style={styles.modalTitle}>Editar Torneo</Text>
 
             <Text style={styles.label}>Nombre del Torneo</Text>
-            {/* Input para editar nombre del torneo */}
             <TextInput
               style={styles.input}
               placeholder="Nombre del Torneo"
@@ -133,8 +313,16 @@ export default function TorneoConfig({ route, navigation }) {
               onChangeText={(text) => setEditedTorneo({ ...editedTorneo, nombre: text })}
             />
 
-            {/* Opciones de radio button para Formato del Torneo */}
             <Text style={styles.label}>Formato del Torneo:</Text>
+            <RadioButton.Group
+              onValueChange={(newValue) => setEditedTorneo({ ...editedTorneo, tipoFormato: newValue })}
+              value={editedTorneo.tipoFormato}
+            >
+              <RadioButton.Item label="Fase de Grupos" value="Fase de grupos" />
+              <RadioButton.Item label="Eliminación Directa" value="Eliminacion directa" />
+            </RadioButton.Group>
+
+            <Text style={styles.label}>Deporte:</Text>
             <RadioButton.Group
               onValueChange={(newValue) => setEditedTorneo({ ...editedTorneo, formato: newValue })}
               value={editedTorneo.formato}
@@ -143,7 +331,6 @@ export default function TorneoConfig({ route, navigation }) {
               <RadioButton.Item label="Fútbol de Salón" value="salon" />
             </RadioButton.Group>
 
-            {/* Opciones de radio button para Cantidad de Equipos */}
             <Text style={styles.label}>Cantidad de Equipos:</Text>
             <RadioButton.Group
               onValueChange={(newValue) => setEditedTorneo({ ...editedTorneo, cantidadEquipos: newValue })}
@@ -154,7 +341,6 @@ export default function TorneoConfig({ route, navigation }) {
               <RadioButton.Item label="32 equipos" value="32 equipos" />
             </RadioButton.Group>
 
-            {/* Opciones de radio button para Duración de Partidos */}
             <Text style={styles.label}>Duración de Partidos:</Text>
             <RadioButton.Group
               onValueChange={(newValue) => setEditedTorneo({ ...editedTorneo, duracionPartidos: newValue })}
@@ -185,7 +371,7 @@ export default function TorneoConfig({ route, navigation }) {
 
 const styles = StyleSheet.create({
   header: {
-    backgroundColor: "#32CD32",  // Color verde limón
+    backgroundColor: "#32CD32",
     height: 60,
     flexDirection: "row",
     alignItems: "center",
@@ -201,8 +387,13 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    padding: 20,
     backgroundColor: "#f5f5f5",
+  },
+  navIcons: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    backgroundColor: '#32CD32',
+    paddingVertical: 10,
   },
   infoContainer: {
     marginBottom: 30,
@@ -218,7 +409,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
     marginBottom: 5,
-    color: "#000",  // Negro sólido
+    color: "#000",
   },
   value: {
     fontSize: 16,
@@ -262,6 +453,46 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 10,
     marginBottom: 15,
+  },
+  agregarEquiposContainer: {
+    padding: 20,
+    justifyContent: "center",
+  },
+  equipoItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 10,
+    borderBottomColor: "#ccc",
+    borderBottomWidth: 1,
+  },
+  equipoNombre: {
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  equipoJugadores: {
+    fontSize: 12,
+    color: "#666",
+  },
+  iconContainer: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  addButton: {
+    backgroundColor: "#32CD32",
+    padding: 10,
+    borderRadius: 10,
+    alignItems: "center",
+    marginTop: 10,
+  },
+  addButtonText: {
+    color: "#fff",
+    fontSize: 16,
+  },
+  totalEquiposText: {
+    marginVertical: 10,
+    fontSize: 16,
+    fontWeight: "bold",
   },
   modalContainer: {
     flex: 1,
