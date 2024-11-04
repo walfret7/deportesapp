@@ -25,7 +25,7 @@ const LoginScreen = ({ navigation }) => {
   // UI DE LOGINSCREEN
   return (
     <View style={styles.container}>
-      <Image source={require('../assets/logo.jpg')} style={styles.logo} />
+      <Image source={require('../assets/Pro.png')} style={styles.logo} />
 
       <Text style={styles.title}>Login</Text>
       
@@ -64,9 +64,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   logo: {
-    width: 100,
-    height: 100,
-    marginBottom: 20,
+    width: 350,      
+    height: 350,     
+    marginBottom: 5, 
+    marginTop: -30,  
   },
   title: {
     fontSize: 30,

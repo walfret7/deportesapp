@@ -76,9 +76,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   logo: {
-    width: 100,
-    height: 100,
-    marginBottom: 20,
+    width: 300,      
+    height: 300,     
+    marginBottom: 30, 
+    marginTop: -40, 
   },
   title: {
     fontSize: 30,
