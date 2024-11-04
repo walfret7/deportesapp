@@ -6,6 +6,7 @@ import RegisterScreen from './src/screens/RegisterScreen';
 import Home from './src/screens/Home';
 import NuevoTorneo from './src/screens/NuevoTorneo';
 import TorneoConfig from './src/screens/TorneoConfig';
+import PassRecovery from './src/screens/PassRecovery';
 
 const Stack = createStackNavigator();
  
@@ -18,6 +19,7 @@ function App() {
         <Stack.Screen name="Home" component={Home} options={{ headerShown: false }}/>
         <Stack.Screen name="NuevoTorneo" component={NuevoTorneo} options={{ headerShown: false }}/>
         <Stack.Screen name="TorneoConfig" component={TorneoConfig} options={{ headerShown: false }}/>
+        <Stack.Screen name="PassRecovery" component={PassRecovery} options={{ headerShown: false }}/>
       </Stack.Navigator>
     </NavigationContainer>
   );

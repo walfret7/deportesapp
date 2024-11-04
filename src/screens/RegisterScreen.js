@@ -1,6 +1,7 @@
 import React, {useState} from 'react';
 import { CommonActions } from '@react-navigation/native';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, Alert } from 'react-native';
+import Ionicons from "react-native-vector-icons/Ionicons";
 
 //IMPORTACION PARA FIREBASE
 import appFirebase from '../../credentials';
@@ -47,6 +48,7 @@ const RegisterScreen = ({ navigation }) => {
   //UI DEL SCREEN REGISTRO
   return (
     <View style={styles.container}>
+      <Ionicons name="arrow-back" size={30} color="#32CD32" style={styles.backIcon} onPress={() => navigation.navigate("Login")} />
       <Image source={require('../assets/logo.jpg')} style={styles.logo} />
 
       <Text style={styles.title}>Register</Text>
@@ -107,6 +109,11 @@ const styles = StyleSheet.create({
   loginText: {
     color: '#007BFF',
     marginTop: 20,
+  },
+  backIcon: {
+    position: "absolute",
+    top: 40,
+    left: 20,
   },
 });
 
