@@ -4,6 +4,7 @@ import { doc, getDoc, deleteDoc, updateDoc, addDoc, collection, query, where, on
 import { db } from "../../credentials";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { RadioButton } from 'react-native-paper';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 export default function TorneoConfig({ route, navigation }) {
   const { torneoId } = route.params;
@@ -17,6 +18,8 @@ export default function TorneoConfig({ route, navigation }) {
   const [equipoEditado, setEquipoEditado] = useState(null); // Estado para manejar el equipo en edición
   const [isEditModalVisible, setIsEditModalVisible] = useState(false); // Controlar la visibilidad del modal de edición
   const [emparejamientos, setEmparejamientos] = useState(null);
+  const [seccionActiva, setSeccionActiva] = useState("home"); // "home" es la sección inicial
+
 
   // Función para obtener los datos del torneo
   const fetchTorneo = async () => {
@@ -209,10 +212,20 @@ const handleResultChange = (rondaIndex, matchIndex, resultadoField, value) => {
 };
 
 // Función para confirmar los ganadores de la ronda actual y generar la siguiente ronda
+// Función para confirmar los ganadores de la ronda actual y generar la siguiente ronda
 const confirmarRonda = (rondaIndex) => {
   const rondaActual = emparejamientos[rondaIndex];
-  const nuevaRonda = [];
+  
+  // Si solo quedan dos equipos, se determinará el ganador final
+  if (rondaActual.length === 1 && torneo.tipoformato === "Eliminacion directa") {
+    const match = rondaActual[0];
+    const ganador = match.resultado1 > match.resultado2 ? match.equipo1 : match.equipo2;
 
+    Alert.alert("¡Campeón!", `El equipo campeón es: ${ganador.nombre}`);
+    return;
+  }
+
+  const nuevaRonda = [];
   for (let i = 0; i < rondaActual.length; i += 2) {
     const match1 = rondaActual[i];
     const match2 = rondaActual[i + 1];
@@ -239,6 +252,7 @@ const confirmarRonda = (rondaIndex) => {
     Alert.alert("Error", "Por favor, ingresa todos los resultados para esta ronda antes de avanzar.");
   }
 };
+
   
 return (
   <View style={styles.container}>
@@ -255,18 +269,16 @@ return (
 
     {/* Barra de navegación adicional */}
     <View style={styles.navIcons}>
-      <TouchableOpacity onPress={() => { setMostrarAgregarEquipos(false); setMostrarEmparejamientos(false); }}>
-        <Ionicons name="home-outline" size={30} color="#fff" />
+      <TouchableOpacity onPress={() => { setSeccionActiva("home"); setMostrarAgregarEquipos(false); setMostrarEmparejamientos(false); }}>
+        <Ionicons name="home-outline" size={30} color="#fff" style={seccionActiva === "home" ? styles.iconoActivo : {}} />
       </TouchableOpacity>
-      <TouchableOpacity onPress={() => { setMostrarAgregarEquipos(true); setMostrarEmparejamientos(false); }}>
-        <Ionicons name="football-outline" size={30} color="#fff" />
+      <TouchableOpacity onPress={() => { setSeccionActiva("equipos"); setMostrarAgregarEquipos(true); setMostrarEmparejamientos(false); }}>
+        <Ionicons name="football-outline" size={30} color="#fff" style={seccionActiva === "equipos" ? styles.iconoActivo : {}} />
       </TouchableOpacity>
-      <TouchableOpacity onPress={() => { setMostrarEmparejamientos(true); setMostrarAgregarEquipos(false); }}>
-        <Ionicons name="trophy-outline" size={30} color="#fff" />
+      <TouchableOpacity onPress={() => { setSeccionActiva("emparejamientos"); setMostrarEmparejamientos(true); setMostrarAgregarEquipos(false); }}>
+        <Ionicons name="trophy-outline" size={30} color="#fff" style={seccionActiva === "emparejamientos" ? styles.iconoActivo : {}} />
       </TouchableOpacity>
-      <TouchableOpacity onPress={() => alert('Chat')}>
-        <Ionicons name="chatbubble-outline" size={30} color="#fff" />
-      </TouchableOpacity>
+      
     </View>
 
     {mostrarAgregarEquipos ? (
@@ -286,7 +298,7 @@ return (
         <Text style={styles.totalEquiposText}>Total: {equipos.length}</Text>
         {equipos.map((equipo) => (
           <View key={equipo.id} style={styles.equipoItem}>
-            <Ionicons name="trophy-outline" size={30} color="#32CD32" />
+            <MaterialCommunityIcons name="shield-account-outline" size={30} color="#32CD32" />
             <View>
               <Text style={styles.equipoNombreAgregar}>{equipo.nombre}</Text>
               <Text style={styles.equipoJugadores}>0 Jugador</Text>
@@ -799,5 +811,10 @@ equipoNombreAgregar: {
   fontWeight: "bold",
   color: "#000000", // Cambia el color a negro
 },
+iconoActivo: {
+  borderBottomColor: "#fff",
+  borderBottomWidth: 5,
+  paddingBottom: 2,
+}
 
 });

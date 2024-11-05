@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ImageBackground, ScrollView, Image } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, ImageBackground, ScrollView, Image, Modal } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";  // Para iconos
 import FontAwesome from "react-native-vector-icons/FontAwesome";  // Para el icono de usuario
-import { Menu, MenuItem } from 'react-native-material-menu';  // Para el menú desplegable
 import { collection, query, where, onSnapshot } from "firebase/firestore"; // Para interactuar con Firestore en tiempo real
 import { getAuth } from "firebase/auth";
 import { db } from "../../credentials";  // Firestore ya configurado
@@ -11,6 +10,19 @@ export default function Home({ navigation }) {
   const [visibleMenus, setVisibleMenus] = useState({});  // Estado para gestionar la visibilidad de menús
   const [torneos, setTorneos] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isUserModalVisible, setIsUserModalVisible] = useState(false); // Estado para el modal del usuario
+  const [userData, setUserData] = useState(null); // Datos del usuario
+
+  // Función para obtener los datos del usuario actual
+  const fetchUserData = () => {
+    const auth = getAuth();
+    const user = auth.currentUser;
+    if (user) {
+      setUserData({
+        email: user.email,
+      });
+    }
+  };
 
   // Mostrar menú específico basado en ID
   const showMenu = (id) => {
@@ -49,6 +61,10 @@ export default function Home({ navigation }) {
     }
   }, []);
 
+  useEffect(() => {
+    fetchUserData();
+  }, []);
+
   if (loading) {
     return <Text>Cargando torneos...</Text>;
   }
@@ -61,12 +77,32 @@ export default function Home({ navigation }) {
           <Ionicons name="menu" size={30} color="#fff" />
         </TouchableOpacity>
 
-        <FontAwesome name="user" size={30} color="#fff" />
+        <TouchableOpacity onPress={() => setIsUserModalVisible(true)}>
+          <FontAwesome name="user" size={30} color="#fff" />
+        </TouchableOpacity>
 
         <TouchableOpacity onPress={() => navigation.navigate("Login")}>
           <Ionicons name="exit-outline" size={30} color="#fff" />
         </TouchableOpacity>
       </View>
+
+      {/* Modal para mostrar los datos del usuario */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={isUserModalVisible}
+        onRequestClose={() => setIsUserModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Datos del Usuario</Text>
+            <Text style={styles.modalText}>Correo electrónico: {userData?.email}</Text>
+            <TouchableOpacity style={styles.closeButton} onPress={() => setIsUserModalVisible(false)}>
+              <Text style={styles.closeButtonText}>Cerrar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* Imagen de fondo */}
       <ImageBackground
@@ -173,10 +209,37 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginLeft: 10,
   },
-  menuButton: {
-    position: "absolute",
-    top: 5,
-    right: 5,
-    zIndex: 1,  // Asegura que esté encima del contenido del torneo
+  modalContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+  },
+  modalContent: {
+    width: 300,
+    padding: 20,
+    backgroundColor: "#fff",
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 10,
+  },
+  modalText: {
+    fontSize: 16,
+    marginBottom: 10,
+  },
+  closeButton: {
+    marginTop: 20,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    backgroundColor: "#32CD32",
+    borderRadius: 5,
+  },
+  closeButtonText: {
+    color: "#fff",
+    fontSize: 16,
   },
 });
