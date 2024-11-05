@@ -373,7 +373,7 @@ return (
 
       <Text style={styles.label}>Deporte:</Text>
       <Text style={styles.value}>
-        {torneo.tipoTorneo === "Fútbol de campo" ? "Fútbol de Campo" : "Fútbol de Salón"}
+        {torneo.tipoTorneo === "Fútbol de Campo" ? "Fútbol de Campo" : "Fútbol de Salón"}
       </Text>
 
       <Text style={styles.label}>Formato del Torneo:</Text>
@@ -457,8 +457,8 @@ return (
 
           <Text style={styles.label}>Formato del Torneo:</Text>
           <RadioButton.Group
-            onValueChange={(newValue) => setEditedTorneo({ ...editedTorneo, tipoFormato: newValue })}
-            value={editedTorneo.tipoFormato}
+            onValueChange={(newValue) => setEditedTorneo({ ...editedTorneo, tipoformato: newValue })}
+            value={editedTorneo.tipoformato}
           >
             <RadioButton.Item label="Fase de Grupos" value="Fase de grupos" />
             <RadioButton.Item label="Eliminación Directa" value="Eliminacion directa" />
@@ -469,7 +469,7 @@ return (
             onValueChange={(newValue) => setEditedTorneo({ ...editedTorneo, tipoTorneo: newValue })}
             value={editedTorneo.tipoTorneo}
           >
-            <RadioButton.Item label="Fútbol de Campo" value="campo" />
+            <RadioButton.Item label="Fútbol de Campo" value="Fútbol de Campo" />
             <RadioButton.Item label="Fútbol de Salón" value="salon" />
           </RadioButton.Group>
 

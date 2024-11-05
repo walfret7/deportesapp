@@ -35,7 +35,7 @@ export default function NuevoTorneo({ navigation }) {
           fechaInicio: startDate,
           cantidadEquipos: selectedDetail,
           duracionPartidos: selectedDuration,
-          tipoTorneo: selectedOption === "campo" ? "Fútbol de campo" : "Fútbol de salón",  // Agregar si es de campo o salón
+          tipoTorneo: selectedOption === "Fútbol de Campo" ? "Fútbol de Campo" : "Fútbol de salón",  // Agregar si es de campo o salón
           userUID: user.uid,  // Asociar el torneo al UID del usuario
         };
 
@@ -104,15 +104,15 @@ export default function NuevoTorneo({ navigation }) {
           <TouchableOpacity
             style={[
               styles.optionButton,
-              selectedOption === "campo" && styles.selectedOption,  // Estilo para la opción seleccionada
+              selectedOption === "Fútbol de Campo" && styles.selectedOption,  // Estilo para la opción seleccionada
             ]}
-            onPress={() => setSelectedOption("campo")}
+            onPress={() => setSelectedOption("Fútbol de Campo")}
           >
             <Text style={styles.optionText}>Fútbol de campo</Text>
           </TouchableOpacity>
 
           {/* Mostrar formulario si se selecciona Fútbol de campo */}
-          {selectedOption === "campo" && (
+          {selectedOption === "Fútbol de Campo" && (
             <View style={styles.form}>
               <Text style={styles.label}>Nombre del Torneo</Text>
               <TextInput
